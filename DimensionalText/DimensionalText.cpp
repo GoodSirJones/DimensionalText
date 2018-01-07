@@ -15,16 +15,24 @@ using namespace std;
 int rc;
 int roomID;
 std::stringstream RoomName;
+std::stringstream MoveID;
+std::stringstream NewPath;
 std::atomic<GameAction> game_action = GameAction::NONE;
 char* error;
 sqlite3 *db;
 sqlite3 *stmt;
-char directionName;
+char exitName[10];
 
 void Look();
-void processInput();
+//void processInput();
 void moveRoom();
+void Inventory();
+void createPath();
+void destroyPath();
+void collect();
+void interact();
 void action(std::string&);
+void transition();
 
 int main()
 {
@@ -64,26 +72,58 @@ int main()
 	
 	cout << "You find yourself in a " << results[cellPosition] <<  ". What do you do?" << endl;
 
-	/*
-	do
-	{
 
-	} while (game_action != GameAction::QUIT);*/
+
+	while (input != "quit")
+	{
+		cin >> input;
+		if (input == "move")
+		{
+			moveRoom();
+		}
+		else if (input == "look")
+		{
+			Look();
+		}
+		else if (input == "inventory")
+		{
+			Inventory();
+		}
+		else if (input == "collect")
+		{
+			collect();
+		}
+		else if (input == "create")
+		{
+			createPath();
+		}
+		else if (input == "destroy")
+		{
+			destroyPath();
+		}
+		else if (input == "interact")
+		{
+			interact();
+		}
+	}
 	
+/*	
 	while (game_action != GameAction::QUIT)
 	{
 		cin >> input;
 
 		action(input);
 		processInput();
-	}
+	}*/
 
+	cout << "Thank you for playing" << endl;
 	sqlite3_close(db);
 
 
     return 0;
 }
 
+/*
 void action(std::string& input)
 {
 	if (input == ActionStringLiterals::look)
@@ -97,6 +137,18 @@ void action(std::string& input)
 	else if (input == ActionStringLiterals::inventory)
 	{
 		game_action = GameAction::INVENTORY;
+	}
+	else if (input == ActionStringLiterals::create)
+	{
+		game_action = GameAction::CREATE;
+	}
+	else if (input == ActionStringLiterals::destroy)
+	{
+		game_action = GameAction::DESTROY;
+	}
+	else if (input == ActionStringLiterals::collect)
+	{
+		game_action = GameAction::COLLECT;
 	}
 	else if (input == ActionStringLiterals::quit)
 	{
@@ -123,7 +175,19 @@ void processInput()
 	}
 	else if (game_action == GameAction::INVENTORY)
 	{
-		cout << "Your inventory is currently empty" << endl;
+		Inventory();
+	}
+	else if (game_action == GameAction::CREATE)
+	{
+		createPath();
+	}
+	else if (game_action == GameAction::DESTROY)
+	{
+		destroyPath();
+	}
+	else if (game_action == GameAction::COLLECT)
+	{
+		collect();
 	}
 	else if (game_action == GameAction::QUIT)
 	{
@@ -133,6 +197,25 @@ void processInput()
 	{
 		cout << "I'm sorry, I don't know what that means" << endl;
 	}
+
+	return;
+}*/
+
+void collect()
+{
+	char itemName;
+
+	cout << "Which item do you want to collect?" << endl;
+	cin >> itemName;
+
+	cout << "That item does not exist." << endl;
+
+	return;
+}
+
+void interact()
+{
+	cout << "There is nothing to interact with" << endl;
 
 	return;
 }
@@ -166,18 +249,150 @@ void Look()
 	return;
 }
 
-void moveRoom()
+
+void Inventory()
 {
+	const char* inventoryCheck = "SELECT * FROM inventory;";
+	char **results;
+	int rows, columns;
+
+	sqlite3_get_table(db, inventoryCheck, &results, &rows, &columns, &error);
+
+	if (rc)
+	{
+		cerr << "Error loading inventory due to: " << sqlite3_errmsg(db) << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		int cellPosition = rows;
+
+		cout << results[cellPosition] << endl;
+	}
+
+	//cout << "Your inventory is currently empty." << endl;
 	
-	//cout << "Which direction do you wish to move in?" << endl;
-	//cin >> directionName;
+	return;
+}
 
+void createPath()
+{
+	//int fromID;
+	char pathDirection;
+	int toID;
 
+	
+	
 
-	cout << "Enter the ID of the room you wish to move to " << endl;
-	cin >> roomID;
+	cout << "Enter the direction you want the new path to head in." << endl;
+	cin >> pathDirection;
 
-	RoomName << "SELECT NAME FROM locations WHERE ID = " << roomID << ";";
+	cout << "Enter the room the path is leading to." << endl;
+	cin >> toID;
+
+	NewPath << "INSERT INTO exits VALUES(" << roomID << ", '" << pathDirection << "', " << toID << ");";
+	string s = NewPath.str();
+	char *str = &s[0];
+	
+	const char *sqlInsert = str;
+	rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
+
+	if (rc)
+	{
+		cerr << "Cannot create path because: " << sqlite3_errmsg(db) << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Path successfully created" << endl;
+	}
+
+	return;
+}
+
+void destroyPath()
+{
+	int destroyID;
+	std::stringstream destroy;
+	char choice;
+
+	cout << "Input the ID of the room that the exit you wish to destroy leads to" << endl;
+	cin >> destroyID;
+
+	cout << "WARNING! Once you destroy this path, it will be forever lost to you! Are you sure you want to proceed?" << endl;
+	cin >> choice;
+
+	if (choice == 'yes')
+	{
+		destroy << "DELETE FROM exits WHERE TO_ID = " << destroyID << ";";
+		string s = destroy.str();
+
+		char *str = &s[0];
+
+		const char *sqlInsert = str;
+		rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
+
+		if (rc)
+		{
+			cerr << "Cannot destroy path because: " << sqlite3_errmsg(db) << endl;
+			sqlite3_free(error);
+		}
+		else
+		{
+			cout << "Path successfully destroyed. Hope you didn't need it!" << endl;
+		}
+	}
+	else if (choice == 'no')
+	{
+		cout << "Path destruction cancelled." << endl;
+	}
+
+	
+
+	return;
+}
+
+void moveRoom()
+
+{
+
+	unsigned int transferID;
+	cout << "Which direction do you wish to move in?" << endl;
+	cin >> exitName;
+
+	
+	
+
+	//cout << "Enter the ID of the room you wish to open a portal to." << endl;
+	//cin >> roomID;
+
+	/**/
+	MoveID << "SELECT TO_ID FROM exits WHERE EXIT_NAME = '" << exitName << "';";
+	string s1 = MoveID.str();
+	char* str1 = &s1[0];
+	const char* query1 = str1;
+	char** results1;
+	int rows1, columns1;
+
+	
+	sqlite3_get_table(db, query1, &results1, &rows1, &columns1, &error);
+	
+	int cellPosition1 = rows1;
+
+	cout << "You are now headed " << results1[cellPosition1] << "." << endl;
+
+	MoveID >> transferID;
+	
+	/*
+	if (exitName == "North")
+	{
+
+	}*/
+	
+
+	RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.ID = exits.TO_ID WHERE exits.TO_ID = " << transferID << ";";
+	//RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.ID = exits.TO_ID WHERE exits.EXIT_NAME = '" << exitName << "';";
+	//RoomName << "SELECT NAME FROM locations WHERE ID = " << roomID << ";";
 	string s = RoomName.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -185,17 +400,17 @@ void moveRoom()
 	int rows, columns;
 
 	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
-
-	int cellPosition = rows;
-
 	if (rc)
 	{
-		cout << "I'm sorry, that room does not appear to exist." << endl;
+		cout << "You can't go in that direction." << endl;
 		sqlite3_free(error);
 
 	}
 	else
 	{
+
+		int cellPosition = rows;
+
 		cout << "You are now in a " << results[cellPosition] << ". What do you do next?" << endl;
 	}
 	
@@ -204,3 +419,8 @@ void moveRoom()
 	return;
 }
 
+void transition()
+{
+
+	return;
+}

@@ -9,6 +9,9 @@ enum class GameAction
 	LOOK,
 	MOVE,
 	INVENTORY,
+	CREATE,
+	DESTROY,
+	COLLECT,
 	QUIT
 };
 
@@ -17,6 +20,9 @@ namespace ActionStringLiterals
 	const std::string look = "look";
 	const std::string move = "move";
 	const std::string inventory = "inventory";
+	const std::string create = "create";
+	const std::string destroy = "destroy";
+	const std::string collect = "collect";
 	const std::string quit = "quit";
 }
 
