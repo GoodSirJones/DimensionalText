@@ -14,6 +14,8 @@ using namespace std;
 
 int rc;
 int roomID;
+char currentRoom;
+char IDRoom;
 std::stringstream RoomName;
 std::stringstream MoveID;
 std::stringstream NewPath;
@@ -24,15 +26,14 @@ sqlite3 *stmt;
 char exitName[10];
 
 void Look();
-//void processInput();
 void moveRoom();
 void Inventory();
 void createPath();
+void checkRoomID();
 void destroyPath();
 void collect();
 void interact();
 void action(std::string&);
-void transition();
 
 int main()
 {
@@ -40,8 +41,11 @@ int main()
 
 	roomID = 1;
 	
+	IDRoom = '1';
 
-	rc = sqlite3_open("house2.db", &db);
+	MoveID.str() = "1";
+
+	rc = sqlite3_open("house6.db", &db);
 
 	if (rc)
 	{
@@ -72,7 +76,7 @@ int main()
 	
 	cout << "You find yourself in a " << results[cellPosition] <<  ". What do you do?" << endl;
 
-
+	
 
 	while (input != "quit")
 	{
@@ -104,17 +108,8 @@ int main()
 		else if (input == "interact")
 		{
 			interact();
-		}
+		}	
 	}
-	
-/*	
-	while (game_action != GameAction::QUIT)
-	{
-		cin >> input;
-
-		action(input);
-		processInput();
-	}*/
 
 	cout << "Thank you for playing" << endl;
 	sqlite3_close(db);
@@ -122,84 +117,6 @@ int main()
 
     return 0;
 }
-
-/*
-void action(std::string& input)
-{
-	if (input == ActionStringLiterals::look)
-	{
-		game_action = GameAction::LOOK;
-	}
-	else if (input == ActionStringLiterals::move)
-	{
-		game_action = GameAction::MOVE;
-	}
-	else if (input == ActionStringLiterals::inventory)
-	{
-		game_action = GameAction::INVENTORY;
-	}
-	else if (input == ActionStringLiterals::create)
-	{
-		game_action = GameAction::CREATE;
-	}
-	else if (input == ActionStringLiterals::destroy)
-	{
-		game_action = GameAction::DESTROY;
-	}
-	else if (input == ActionStringLiterals::collect)
-	{
-		game_action = GameAction::COLLECT;
-	}
-	else if (input == ActionStringLiterals::quit)
-	{
-		game_action = GameAction::QUIT;
-	}
-	else
-	{
-		game_action = GameAction::INVALID;
-	}
-	
-	
-	return;
-}
-
-void processInput()
-{
-	if (game_action == GameAction::LOOK)
-	{
-		Look();
-	}
-	else if (game_action == GameAction::MOVE)
-	{
-		moveRoom();
-	}
-	else if (game_action == GameAction::INVENTORY)
-	{
-		Inventory();
-	}
-	else if (game_action == GameAction::CREATE)
-	{
-		createPath();
-	}
-	else if (game_action == GameAction::DESTROY)
-	{
-		destroyPath();
-	}
-	else if (game_action == GameAction::COLLECT)
-	{
-		collect();
-	}
-	else if (game_action == GameAction::QUIT)
-	{
-		cout << "Thank you for playing our game!" << endl;
-	}
-	else if (game_action == GameAction::INVALID)
-	{
-		cout << "I'm sorry, I don't know what that means" << endl;
-	}
-
-	return;
-}*/
 
 void collect()
 {
@@ -265,12 +182,11 @@ void Inventory()
 	}
 	else
 	{
+		cout << "You currently have :" << endl;
 		int cellPosition = rows;
 
 		cout << results[cellPosition] << endl;
 	}
-
-	//cout << "Your inventory is currently empty." << endl;
 	
 	return;
 }
@@ -278,19 +194,23 @@ void Inventory()
 void createPath()
 {
 	//int fromID;
-	char pathDirection;
-	int toID;
+	char pathDirection[10];
+	int pathID;
+	char toRoom[10];
+	char fromRoom[10];
 
-	
-	
+	cout << "Enter the room you are currently in: " << endl;
+	cin >> fromRoom;
 
 	cout << "Enter the direction you want the new path to head in." << endl;
 	cin >> pathDirection;
 
-	cout << "Enter the room the path is leading to." << endl;
-	cin >> toID;
+	cout << "Which room is the portal going towards?" << endl;
+	cin >> toRoom;
 
-	NewPath << "INSERT INTO exits VALUES(" << roomID << ", '" << pathDirection << "', " << toID << ");";
+	
+
+	NewPath << "INSERT INTO exits (FROM_ROOM, DIRECTION, TO_ROOM) VALUES('" << fromRoom << "', '" << pathDirection << "', '" << toRoom << "');";
 	string s = NewPath.str();
 	char *str = &s[0];
 	
@@ -313,18 +233,19 @@ void createPath()
 void destroyPath()
 {
 	int destroyID;
+	char destroyName;
 	std::stringstream destroy;
-	char choice;
+	char choice[5];
 
-	cout << "Input the ID of the room that the exit you wish to destroy leads to" << endl;
-	cin >> destroyID;
+	cout << "Input the name of the exit you wish to destroy, or the direction it heads in" << endl;
+	cin >> destroyName;
 
 	cout << "WARNING! Once you destroy this path, it will be forever lost to you! Are you sure you want to proceed?" << endl;
 	cin >> choice;
 
-	if (choice == 'yes')
+	if (choice == "yes")
 	{
-		destroy << "DELETE FROM exits WHERE TO_ID = " << destroyID << ";";
+		destroy << "DELETE FROM exits WHERE DIRECTION = '" << destroyName << "';";
 		string s = destroy.str();
 
 		char *str = &s[0];
@@ -342,7 +263,7 @@ void destroyPath()
 			cout << "Path successfully destroyed. Hope you didn't need it!" << endl;
 		}
 	}
-	else if (choice == 'no')
+	else if (choice == "no")
 	{
 		cout << "Path destruction cancelled." << endl;
 	}
@@ -355,44 +276,12 @@ void destroyPath()
 void moveRoom()
 
 {
-
-	unsigned int transferID;
 	cout << "Which direction do you wish to move in?" << endl;
 	cin >> exitName;
-
 	
 	
 
-	//cout << "Enter the ID of the room you wish to open a portal to." << endl;
-	//cin >> roomID;
-
-	/**/
-	MoveID << "SELECT TO_ID FROM exits WHERE EXIT_NAME = '" << exitName << "';";
-	string s1 = MoveID.str();
-	char* str1 = &s1[0];
-	const char* query1 = str1;
-	char** results1;
-	int rows1, columns1;
-
-	
-	sqlite3_get_table(db, query1, &results1, &rows1, &columns1, &error);
-	
-	int cellPosition1 = rows1;
-
-	cout << "You are now headed " << results1[cellPosition1] << "." << endl;
-
-	MoveID >> transferID;
-	
-	/*
-	if (exitName == "North")
-	{
-
-	}*/
-	
-
-	RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.ID = exits.TO_ID WHERE exits.TO_ID = " << transferID << ";";
-	//RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.ID = exits.TO_ID WHERE exits.EXIT_NAME = '" << exitName << "';";
-	//RoomName << "SELECT NAME FROM locations WHERE ID = " << roomID << ";";
+	RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.NAME = exits.TO_ROOM WHERE exits.DIRECTION = '" << exitName << "';";
 	string s = RoomName.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -412,15 +301,18 @@ void moveRoom()
 		int cellPosition = rows;
 
 		cout << "You are now in a " << results[cellPosition] << ". What do you do next?" << endl;
-	}
-	
 
+		roomID = cellPosition;
+
+
+	}
 
 	return;
 }
 
-void transition()
+void checkRoomID()
 {
 
-	return;
 }
+
+
