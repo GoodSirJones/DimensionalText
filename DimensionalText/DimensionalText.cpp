@@ -26,13 +26,15 @@ char* error;
 sqlite3 *db;
 sqlite3 *stmt;
 char exitName[10];
+bool exitsPresent;
 
 void Look();
 void moveRoom();
 void Inventory();
 void createPath();
 void useItem();
-void checkRoomID(bool examine);
+void checkExits();
+void objects();
 void destroyPath();
 void collect();
 void dropItem();
@@ -42,10 +44,6 @@ void interact();
 int main()
 {
 	std::string input = "";
-
-	roomID = 1;
-
-
 
 	rc = sqlite3_open("house6.db", &db);
 
@@ -76,9 +74,13 @@ int main()
 
 	int cellPosition = rows;
 	
-	cout << "You find yourself in a " << results[cellPosition] <<  ". What do you do?" << endl;
+	cout << "You find yourself in a " << results[cellPosition] << ". " << endl;
 
 	currentRoom = results[cellPosition];
+
+	//checkExits();
+
+	cout << "What do you do?" << endl;
 
 	while (input != "quit")
 	{
@@ -114,7 +116,11 @@ int main()
 		else if (input == "interact")
 		{
 			interact();
-		}	
+		}
+		else if (input == "objects")
+		{
+			objects();
+		}
 	}
 
 	cout << "Thank you for playing" << endl;
@@ -205,6 +211,8 @@ void dropItem()
 
 	itemDescription = results[cellPosition];
 
+	cout << itemDescription << endl;
+
 	ItemDrop << "DELETE FROM inventory WHERE ITEM_NAME = '" << itemName << "';";
 	string ds = ItemDrop.str();
 	char* rid = &ds[0];
@@ -221,7 +229,7 @@ void dropItem()
 		cout << "Item dropped" << endl;
 	}
 
-	ItemLand << "INSERT INTO items (NAME, DESCRIPTION) VALUES ('" << itemName << "', '" << itemDescription << "');";
+	ItemLand << "INSERT INTO items(NAME, DESCRIPTION) VALUES ('" << itemName << "', '" << itemDescription << "');";
 	string si = ItemLand.str();
 	char* thud = &si[0];
 	const char* sqlInsert = thud;
@@ -240,9 +248,55 @@ void dropItem()
 	return;
 }
 
+void checkExits()
+{
+	std::stringstream availableExits;
+
+	availableExits << "SELECT DIRECTION FROM exits WHERE FROM_ROOM = '" << currentRoom << "';";
+	string s = availableExits.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+	
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+	int exitCount;
+
+
+	if (rc)
+	{
+		cerr << "Error encountered: " << sqlite3_errmsg(db) << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Exits currently available: " << endl;
+		
+
+		
+		for (exitCount = 0; exitCount <= rows; exitCount++)
+		{
+			int cellPosition = exitCount;
+			cout << results[cellPosition] << endl;
+		}
+
+	}
+
+
+	return;
+}
+
 void useItem()
 {
+	char objectUse[10];
+	
+	cout << "Which object do you wish to use?" << endl;
+	cin >> objectUse;
 
+	
+
+	return;
 }
 
 void interact()
@@ -276,6 +330,8 @@ void Look()
 
 		cout << results[cellPosition] << endl;
 	}
+
+	
 
 	return;
 }
@@ -403,12 +459,16 @@ void moveRoom()
 	{
 		int cellPosition = rows;
 
-		cout << "You are now in a " << results[cellPosition] << ". What do you do next?" << endl;
+		cout << "You are now in a " << results[cellPosition] << "." << endl;
+		
+		
 
 		currentRoom = results[cellPosition];
 
-		//roomID = cellPosition;
 
+		//checkExits();
+		
+		cout <<"What do you do next? " << endl;
 		
 		MoveID << "SELECT ID FROM locations WHERE NAME = '" << results[cellPosition] << "';";
 		currentID = MoveID.str();
@@ -427,8 +487,34 @@ void moveRoom()
 	return;
 }
 
-void checkRoomID(bool examine)
+void objects()
 {
+	std::stringstream objectList;
+
+	objectList << "SELECT DESCRIPTION FROM objects WHERE ROOM_LINK = " << IDRoom << ";";
+	string s = objectList.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+	if (rc)
+	{
+		cerr << "Cannot perform function due to: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "You can see: " << endl;
+		for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
+		{
+			int cellPosition = rowCtr;
+
+			cout << results[cellPosition] << endl;
+		}
+		
+	}
 	
 	return;
 }

@@ -1,5 +1,5 @@
 ﻿  DimensionalText.cpp
-c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltext\dimensionaltext\dimensionaltext.cpp(314): warning C4101: 'fromRoom': unreferenced local variable
-c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltext\dimensionaltext\dimensionaltext.cpp(345): warning C4101: 'destroyID': unreferenced local variable
+c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltext\dimensionaltext\dimensionaltext.cpp(370): warning C4101: 'fromRoom': unreferenced local variable
+c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltext\dimensionaltext\dimensionaltext.cpp(401): warning C4101: 'destroyID': unreferenced local variable
   DimensionalText.vcxproj -> C:\Users\Nicholas H.M. Jones\Documents\Visual Studio 2015\Projects\DimensionalText\Debug\DimensionalText.exe
   DimensionalText.vcxproj -> C:\Users\Nicholas H.M. Jones\Documents\Visual Studio 2015\Projects\DimensionalText\Debug\DimensionalText.pdb (Full PDB)

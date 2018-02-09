@@ -146,12 +146,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actions.h" />
+    <ClInclude Include="Creator.h" />
+    <ClInclude Include="PlayGame.h" />
+    <ClInclude Include="Room.h" />
     <ClInclude Include="sqlite3.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Creator.cpp" />
     <ClCompile Include="DimensionalText.cpp" />
+    <ClCompile Include="PlayGame.cpp" />
+    <ClCompile Include="Room.cpp" />
     <ClCompile Include="sqlite3.c" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
