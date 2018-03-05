@@ -18,6 +18,10 @@ char* currentRoom;
 char* itemDescription;
 char* IDRoom;
 string currentID;
+string moveLevel;
+
+char* previousPath;
+string currentLevel;
 std::stringstream MoveID;
 std::stringstream RoomName;
 std::stringstream NewPath;
@@ -39,13 +43,17 @@ void destroyPath();
 void collect();
 void dropItem();
 void interact();
+void checkPreviousPath(char*);
+void moveBack();
+void seeItems();
+void floorLevel(char);
 
 
 int main()
 {
 	std::string input = "";
 
-	rc = sqlite3_open("house6.db", &db);
+	rc = sqlite3_open("house7.db", &db);
 
 	if (rc)
 	{
@@ -62,6 +70,9 @@ int main()
 
 	IDRoom = "1";
 
+	
+
+
 	RoomName << "SELECT NAME FROM locations WHERE ID = " << IDRoom << ";";
 	string s = RoomName.str();
 	char* str = &s[0];
@@ -77,8 +88,6 @@ int main()
 	cout << "You find yourself in a " << results[cellPosition] << ". " << endl;
 
 	currentRoom = results[cellPosition];
-
-	//checkExits();
 
 	cout << "What do you do?" << endl;
 
@@ -121,6 +130,15 @@ int main()
 		{
 			objects();
 		}
+		else if (input == "backtrack")
+		{
+			moveBack();
+		}
+		else if (input == "items")
+		{
+			seeItems();
+		}
+		
 	}
 
 	cout << "Thank you for playing" << endl;
@@ -229,7 +247,7 @@ void dropItem()
 		cout << "Item dropped" << endl;
 	}
 
-	ItemLand << "INSERT INTO items(NAME, DESCRIPTION) VALUES ('" << itemName << "', '" << itemDescription << "');";
+	ItemLand << "INSERT INTO items(NAME, DESCRIPTION, ROOM_LINK) VALUES ('" << itemName << "', '" << itemDescription << "', " << IDRoom << ");";
 	string si = ItemLand.str();
 	char* thud = &si[0];
 	const char* sqlInsert = thud;
@@ -252,7 +270,7 @@ void checkExits()
 {
 	std::stringstream availableExits;
 
-	availableExits << "SELECT DIRECTION FROM exits WHERE FROM_ROOM = '" << currentRoom << "';";
+	availableExits << "SELECT PATH_TOWARD FROM exits WHERE FROM_ROOM = '" << currentRoom << "';";
 	string s = availableExits.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -281,6 +299,7 @@ void checkExits()
 			cout << results[cellPosition] << endl;
 		}
 
+	
 	}
 
 
@@ -329,6 +348,8 @@ void Look()
 		int cellPosition = rows;
 
 		cout << results[cellPosition] << endl;
+		checkExits();
+
 	}
 
 	
@@ -366,18 +387,26 @@ void Inventory()
 void createPath()
 {
 	char pathDirection[10];
+	char backDirection[10];
 	char toRoom[10];
 	char fromRoom[10];
+	
 
 	cout << "Room you are currently in: " << currentRoom << endl;
 
 	cout << "Enter the direction you want the new path to head in." << endl;
 	cin >> pathDirection;
 
+	cout << "Enter the direction the path will head towards when you go back." << endl;
+	cin >> backDirection;
+
 	cout << "Which room is the portal going towards?" << endl;
 	cin >> toRoom;
 
-	NewPath << "INSERT INTO exits (FROM_ROOM, DIRECTION, TO_ROOM) VALUES('" << currentRoom << "', '" << pathDirection << "', '" << toRoom << "');";
+
+	
+
+	NewPath << "INSERT INTO exits (FROM_ROOM, PATH_TOWARD, PATH_BACK, TO_ROOM) VALUES('" << currentRoom << "', '" << pathDirection << "', '" << backDirection << "', '" << toRoom << "');";
 	string s = NewPath.str();
 	char *str = &s[0];
 	const char *sqlInsert = str;
@@ -403,15 +432,15 @@ void destroyPath()
 	std::stringstream destroy;
 	std::string choice = "";
 
-	cout << "Input the name of the exit you wish to destroy, or the direction it heads in" << endl;
-	cin >> destroyName;
+	cout << "Input the ID of the exit you wish to destroy" << endl;
+	cin >> destroyID;
 
 	cout << "WARNING! Once you destroy this path, it will be forever lost to you! Are you sure you want to proceed?" << endl;
 	cin >> choice;
 
 	if (choice == "yes")
 	{
-		destroy << "DELETE FROM exits WHERE DIRECTION = '" << destroyName << "';";
+		destroy << "DELETE FROM exits WHERE ID = '" << destroyID << "';";
 		string s = destroy.str();
 
 		char *str = &s[0];
@@ -439,20 +468,28 @@ void destroyPath()
 
 void moveRoom()
 {
+	std::stringstream checkLevel;
+
+	
+	
 	cout << "Which direction do you wish to move in?" << endl;
 	cin >> exitName;
+
+	checkPreviousPath(exitName);
 	
-	RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.NAME = exits.TO_ROOM WHERE exits.DIRECTION = '" << exitName << "';";
+	RoomName << "SELECT NAME FROM locations INNER JOIN exits ON locations.NAME = exits.TO_ROOM WHERE exits.PATH_TOWARD = '" << exitName << "';";
 	string s = RoomName.str();
 	char* str = &s[0];
 	const char* query = str;
 	char** results;
 	int rows, columns;
 
+	
+
 	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
 	if (rc)
 	{
-		cout << "You can't go in that direction." << endl;
+		cout << "You can't go that way." << endl;
 		sqlite3_free(error);
 	}
 	else
@@ -466,7 +503,7 @@ void moveRoom()
 		currentRoom = results[cellPosition];
 
 
-		//checkExits();
+		
 		
 		cout <<"What do you do next? " << endl;
 		
@@ -482,6 +519,84 @@ void moveRoom()
 		int posCell = row1;
 
 		IDRoom = find[posCell];
+	}
+
+	return;
+}
+
+void moveBack()
+{
+	std::stringstream backTrack;
+	
+	backTrack << "SELECT NAME FROM locations INNER JOIN exits ON locations.NAME = exits.FROM_ROOM WHERE exits.PATH_BACK = '" << previousPath << "';";
+	string s = backTrack.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+	if (rc)
+	{
+		cout << "You can't go that way." << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		int cellPosition = rows;
+
+		cout << "You are now in a " << results[cellPosition] << "." << endl;
+
+		currentRoom = results[cellPosition];
+
+		cout << "What do you do next? " << endl;
+
+		MoveID << "SELECT ID FROM locations WHERE NAME = '" << results[cellPosition] << "';";
+		currentID = MoveID.str();
+		char* search = &currentID[0];
+		const char* check = search;
+		char** find;
+		int row1, column1;
+
+		sqlite3_get_table(db, check, &find, &row1, &column1, &error);
+
+		int posCell = row1;
+
+		IDRoom = find[posCell];
+	}
+
+	
+	return;
+}
+
+void seeItems()
+{
+	std::stringstream itemList;
+
+	itemList << "SELECT DESCRIPTION FROM items WHERE ROOM_LINK = " << IDRoom << ";";
+	string s = itemList.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+	if (rc)
+	{
+		cerr << "Cannot perform function due to: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "You can see: " << endl;
+		for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
+		{
+			int cellPosition = rowCtr;
+
+			cout << results[cellPosition] << endl;
+		}
 	}
 
 	return;
@@ -516,6 +631,62 @@ void objects()
 		
 	}
 	
+	return;
+}
+
+void checkPreviousPath(char* lastPath)
+{
+	std::stringstream pathMemory;
+
+	if (lastPath == "East")
+	{
+		previousPath = "West";
+	}
+	else if (lastPath == "North")
+	{
+		previousPath = "South";
+	}
+	else if (lastPath == "West")
+	{
+		previousPath = "East";
+	}
+	else if (lastPath == "South")
+	{
+		previousPath = "North";
+	}
+	else if (lastPath == "Upstairs")
+	{
+		previousPath = "Downstairs";
+	}
+	else if (lastPath == "Downstairs")
+	{
+		previousPath = "Upstairs";
+	}
+
+	return;
+}
+
+void floorLevel(char roomName)
+{
+	std::stringstream checkLevel;
+	int cellPosition;
+
+	checkLevel << "SELECT FROM locations FLOOR WHERE NAME = '" << roomName << "';";
+	string s = checkLevel.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+
+	for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
+	{
+		cellPosition = rowCtr;
+	}
+
+	
+
 	return;
 }
 
