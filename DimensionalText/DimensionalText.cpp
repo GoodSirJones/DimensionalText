@@ -46,7 +46,6 @@ void Inventory();
 void createPath();
 void useItem();
 void checkExits();
-void objects();
 void destroyPath();
 void collect();
 void dropItem();
@@ -58,13 +57,14 @@ void examineItem();
 void earnReward();
 void checkProblems();
 void solvedProblems();
+void seeRewards();
 
 
 int main()
 {
 	std::string input = "";
 
-	rc = sqlite3_open("house8.db", &db);
+	rc = sqlite3_open("house9.db", &db);
 
 	if (rc)
 	{
@@ -159,10 +159,6 @@ int main()
 		{
 			interact();
 		}
-		else if (input == "objects")
-		{
-			objects();
-		}
 		else if (input == "items")
 		{
 			seeItems();
@@ -170,6 +166,10 @@ int main()
 		else if (input == "floor")
 		{
 			floorLevel();
+		}
+		else if (input == "rewards")
+		{
+			seeRewards();
 		}
 		
 	}
@@ -184,28 +184,35 @@ int main()
 void collect()
 {
 	std::stringstream CollectItem;
-	std::stringstream LiftItem;
-	std::stringstream ItemInventory;
+	std::stringstream checkCarry;
+	char* itemCheck;
+	//std::stringstream ItemInventory;
 
 	char itemName[10];
 
 	cout << "Which item do you want to collect?" << endl;
 	cin >> itemName;
 
-	DescribeItem << "SELECT DESCRIPTION FROM items WHERE NAME = '" << itemName << "';";
-	string s = DescribeItem.str();
+	checkCarry << "SELECT COLLECTABLE FROM objects WHERE NAME = '" << itemName << "' AND COLLECTABLE = 0;";
+	string s = checkCarry.str();
 	char* str = &s[0];
 	const char* query = str;
 	char** results;
 	int rows, columns;
 
+
 	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
 
 	int cellPosition = rows;
 
-	itemDescription = results[cellPosition];
 
-	CollectItem << "INSERT INTO inventory (ITEM_NAME, DESCRIPTION) VALUES ('" << itemName << "', '" << itemDescription << "');";
+
+	itemCheck = results[cellPosition];
+	
+	cout << itemCheck << endl;
+
+
+	CollectItem << "UPDATE objects SET HIDDEN = 1 WHERE NAME = '" << itemName << "';";
 	string st = CollectItem.str();
 	char* get = &st[0];
 	const char* sqlInsert = get;
@@ -221,30 +228,6 @@ void collect()
 		cout << "Item collected" << endl;
 	}
 	
-	itemActive = 0;
-
-	LiftItem << "UPDATE items SET SET_DOWN = 0 WHERE NAME = '" << itemName << "';";
-	string ts = LiftItem.str();
-	char* store = &ts[0];
-	const char* sqlDelete = store;
-	rc = sqlite3_exec(db, sqlDelete, NULL, NULL, &error);
-
-	if (rc)
-	{
-		cerr << "Item remains where it was because: " << sqlite3_errmsg(db) << endl;
-		sqlite3_free(error);
-	}
-	else
-	{
-		cout << "Item now in inventory" << endl;
-	}
-
-	ItemInventory << "UPDATE items SET CARRIED = 1 WHERE NAME = '" << itemName << "';";
-	string fc = ItemInventory.str();
-	char* carry = &fc[0];
-	const char* sqlAdd = carry;
-	rc = sqlite3_exec(db, sqlAdd, NULL, NULL, &error);
-
 
 	return;
 }
@@ -257,7 +240,7 @@ void examineItem()
 	cout << "Which item do you want to examine?" << endl;
 	cin >> itemName;
 
-	itemDescription << "SELECT DESCRIPTION FROM items WHERE NAME = '" << itemName << "';";
+	itemDescription << "SELECT DESCRIPTION FROM objects WHERE NAME = '" << itemName << "';";
 	string s = itemDescription.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -276,20 +259,21 @@ void examineItem()
 
 void dropItem()
 {
-	std::stringstream ItemDrop;
 	std::stringstream ItemLand;
 	std::stringstream itemCrash;
 	char itemName[10];
 
+
 	cout << "Which item do you want to get rid of? Remember, you will be able to pick it up again later." << endl;
 	cin >> itemName;
 
-	ItemDrop << "DELETE FROM inventory WHERE ITEM_NAME = '" << itemName << "';";
-	string ds = ItemDrop.str();
-	char* rid = &ds[0];
-	const char* sqlDelete = rid;
-	rc = sqlite3_exec(db, sqlDelete, NULL, NULL, &error);
-
+	
+	ItemLand << "UPDATE objects SET ROOM_LINK = " << IDRoom << ", HIDDEN = 0 WHERE NAME = '" << itemName << "';";
+	string si = ItemLand.str();
+	char* thud = &si[0];
+	const char* sqlInsert = thud;
+	rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
+	
 	if (rc)
 	{
 		cerr << "You cannot get rid of this item because: " << sqlite3_errmsg(db) << endl;
@@ -300,29 +284,7 @@ void dropItem()
 		cout << "Item dropped" << endl;
 	}
 
-	itemActive = 1;
 
-	ItemLand << "UPDATE items SET CARRIED = 0 AND ROOM_LINK = " << IDRoom << " WHERE NAME = '" << itemName << "';";
-	string si = ItemLand.str();
-	char* thud = &si[0];
-	const char* sqlInsert = thud;
-	rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
-
-	if (rc)
-	{
-		cerr << "Something unexpected occurs: " << sqlite3_errmsg(db) << endl;
-		sqlite3_free(error);
-	}
-	else
-	{
-		cout << "Item lands with a thud on the floor." << endl;
-	}
-
-	itemCrash << "UPDATE items SET SET_DOWN = 1 WHERE NAME = '" << itemName << "';";
-	string fc = itemCrash.str();
-	char* carry = &fc[0];
-	const char* sqlAdd = carry;
-	rc = sqlite3_exec(db, sqlAdd, NULL, NULL, &error);
 
 	return;
 }
@@ -335,7 +297,7 @@ void examineInventoryItem()
 	cout << "Which item do you want to examine?" << endl;
 	cin >> itemName;
 
-	itemDescription << "SELECT DESCRIPTION FROM inventory WHERE ITEM_NAME = '" << itemName << "';";
+	itemDescription << "SELECT DESCRIPTION FROM objects WHERE NAME = '" << itemName << "';";
 	string s = itemDescription.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -345,10 +307,20 @@ void examineInventoryItem()
 
 	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
 
-	int cellPosition = rows;
+	if (rc)
+	{
+		cerr << "You cannot examine this item because: " << sqlite3_errmsg(db) << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		int cellPosition = rows;
 
-	cout << results[cellPosition] << endl;
+		cout << results[cellPosition] << endl;
 
+	}
+
+	
 
 	return;
 }
@@ -370,7 +342,7 @@ void checkExits()
 	int exitCount;
 
 
-	if (rc == SQLITE_NOTFOUND)
+	if (rc)
 	{
 		cerr << "Error encountered: " << sqlite3_errmsg(db) << endl;
 		sqlite3_free(error);
@@ -397,7 +369,7 @@ void checkExits()
 
 	sqlite3_get_table(db, lookup, &findings, &row1, &column1, &error);
 
-	if (rc == SQLITE_EMPTY)
+	if (rc)
 	{
 		cerr << "Error encountered: " << sqlite3_errmsg(db) << endl;
 		sqlite3_free(error);
@@ -420,16 +392,21 @@ void checkExits()
 void useItem()
 {
 	char itemUse[10];
+	char objectUse[10];
 	char* problemFix;
 	std::stringstream itemInteraction;
+	std::stringstream actionUndertake;
 	std::stringstream updateProblem;
 	
 	cout << "Which item do you wish to use?" << endl;
 	cin >> itemUse;
 
+	cout << "What do you want to use the item on?" << endl;
+	cin >> objectUse;
 
 
-	itemInteraction << "SELECT AFTER_DESC FROM problems INNER JOIN items ON items.ID = problems.ITEM_NEEDED WHERE items.NAME = '" << itemUse << "';";
+	
+	itemInteraction << "UPDATE objects SET HIDDEN = 2 WHERE NAME = '" << objectUse << "';";
 	string s = itemInteraction.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -442,15 +419,16 @@ void useItem()
 
 	cout << results[cellPosition] << endl;
 
-	problemFix = results[cellPosition];
+	//problemFix = results[cellPosition];
 
+	/*
 	updateProblem << "UPDATE problems SET SOLVED = 1 WHERE AFTER_DESC = '" << problemFix << "';";
 	string w = updateProblem.str();
 	char* fgd = &w[0];
 	const char* search = fgd;
 	rc = sqlite3_exec(db, search, NULL, NULL, &error);
 
-	earnReward();
+	earnReward();*/
 
 	return;
 }
@@ -459,22 +437,17 @@ void interact()
 {
 	char objectUse[10];
 	std::stringstream objectInteraction;
+	std::stringstream objectState;
 
 	cout << "Which object do you wish to interact with?" << endl;
 	cin >> objectUse;
 
-	objectInteraction << "SELECT INTERACTION FROM objects WHERE OBJECT_NAME = '" << objectUse << "';";
+	objectInteraction << "UPDATE objects SET HIDDEN = 1 WHERE OBJECT_NAME = '" << objectUse << "';";
 	string s = objectInteraction.str();
 	char* str = &s[0];
 	const char* query = str;
-	char** results;
-	int rows, columns;
+	rc = sqlite3_exec(db, query, NULL, NULL, &error);
 
-	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
-
-	int cellPosition = rows;
-
-	cout << results[cellPosition] << endl;
 
 
 	return;
@@ -537,8 +510,8 @@ void Inventory()
 {
 	std::string action = "";
 
-
-	const char* inventoryCheck = "SELECT ITEM_NAME FROM inventory;";
+	//if CARRIED = 1: Item in inventory
+	const char* inventoryCheck = "SELECT NAME FROM objects WHERE HIDDEN = 1;";
 	char **results;
 	int rows, columns;
 	
@@ -676,7 +649,7 @@ void moveRoom()
 
 	sqlite3_get_table(db, confine, &discover, &row2, &col2, &error);
 
-	if (rc == SQLITE_NULL)
+	if (rc)
 	{
 		cout << "You can't go that way." << endl;
 		sqlite3_free(error);
@@ -702,7 +675,7 @@ void moveRoom()
 	int rows, columns;
 
 	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
-	if (rc == SQLITE_NULL)
+	if (rc == SQLITE_NOTFOUND)
 	{
 		cout << "You can't go that way." << endl;
 		sqlite3_free(error);
@@ -766,7 +739,8 @@ void seeItems()
 
 	cout << "You look around for any items." << endl;
 
-	itemList << "SELECT NAME FROM items WHERE ROOM_LINK = " << IDRoom << " AND SET_DOWN = 1;";
+	//If CARRIED = 2: Item not in inventory
+	itemList << "SELECT NAME FROM objects WHERE ROOM_LINK = " << IDRoom << " AND HIDDEN = 0;";
 	string s = itemList.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -793,38 +767,6 @@ void seeItems()
 	return;
 }
 
-void objects()
-{
-	std::stringstream objectList;
-	std::string action = "";
-
-	objectList << "SELECT OBJECT_NAME FROM objects WHERE ROOM_LINK = " << IDRoom << ";";
-	string s = objectList.str();
-	char* str = &s[0];
-	const char* query = str;
-	char** results;
-	int rows, columns;
-
-	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
-	if (rc)
-	{
-		cerr << "Cannot perform function due to: " << sqlite3_errmsg(db) << endl << endl;
-		sqlite3_free(error);
-	}
-	else
-	{
-		cout << "You can see: " << endl;
-		for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
-		{
-			int cellPosition = rowCtr;
-
-			cout << results[cellPosition] << endl;
-		}
-		
-	}
-	
-	return;
-}
 
 
 void floorLevel()
@@ -856,12 +798,10 @@ void floorLevel()
 void earnReward()
 {
 	char* rewardName;
-	char* rewardDescription;
 	std::stringstream findReward;
-	std::stringstream describeReward;
 	std::stringstream getReward;
 
-	findReward << "SELECT NAME FROM rewards WHERE PROBLEM_LINK = " << problem << ";";
+	findReward << "SELECT NAME FROM rewards WHERE PROBLEM_LINK = " << problemID << ";";
 	string s = findReward.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -872,22 +812,11 @@ void earnReward()
 
 	int cellPosition = rows;
 
+	cout << "You have just earned a " << results[cellPosition] << "." << endl;
+
 	rewardName = results[cellPosition];
 
-	describeReward << "SELECT DESCRIPTION FROM rewards WHERE NAME = '" << rewardName << "';";
-	string c = describeReward.str();
-	char* rts = &c[0];
-	const char* search = rts;
-	char** findings;
-	int row1, column1;
-
-	sqlite3_get_table(db, search, &findings, &row1, &column1, &error);
-
-	int pCell = row1;
-
-	rewardDescription = findings[pCell];
-
-	getReward << "INSERT INTO inventory (ITEM_NAME, DESCRIPTION) VALUES ('" << rewardName << "', '" << rewardDescription << "');";
+	getReward << "UPDATE rewards SET EARNED = 1 WHERE NAME = '" << rewardName << "';";
 	string st = getReward.str();
 	char* get = &st[0];
 	const char* sqlInsert = get;
@@ -899,6 +828,7 @@ void earnReward()
 void checkProblems()
 {
 	std::stringstream seeProblem;
+	std::stringstream probID;
 
 
 	seeProblem << "SELECT BEFORE_DESC FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
@@ -915,6 +845,23 @@ void checkProblems()
 	cout << findings[pCell] << endl;
 
 	problem = findings[pCell];
+
+	probID << "SELECT ID FROM problems WHERE AFTER_DESC = '" << problem << "';";
+	string f = probID.str();
+	char* gsw = &f[0];
+	const char* change = gsw;
+	char** alter;
+	int row2, column2;
+
+	sqlite3_get_table(db, change, &alter, &row2, &column2, &error);
+
+	int cellP = row2;
+
+	problemID = alter[cellP];
+
+	
+
+
 	
 	return;
 }
@@ -922,6 +869,7 @@ void checkProblems()
 void solvedProblems()
 {
 	std::stringstream seeProblem;
+	std::stringstream probID;
 
 
 	seeProblem << "SELECT AFTER_DESC FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
@@ -936,14 +884,51 @@ void solvedProblems()
 	int pCell = row1;
 
 	cout << findings[pCell] << endl;
-
+	
 	problem = findings[pCell];
 
+	probID << "SELECT ID FROM problems WHERE AFTER_DESC = '" << problem << "';";
+	string f = probID.str();
+	char* gsw = &f[0];
+	const char* change = gsw;
+	char** alter;
+	int row2, column2;
 
+	sqlite3_get_table(db, change, &alter, &row2, &column2, &error);
+
+	int cellP = row2;
+
+	problemID = alter[cellP];
 
 
 	return;
 
+}
+
+void seeRewards()
+{
+	std::stringstream viewRewards;
+
+	viewRewards << "SELECT NAME FROM rewards WHERE EARNED = 1;";
+	string s = viewRewards.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+
+	cout << "Rewards currently earned: " << endl;
+
+	for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
+	{
+		int cellPosition = rowCtr;
+
+		cout << results[cellPosition] << endl;
+	}
+
+	
+	return;
 }
 
 
