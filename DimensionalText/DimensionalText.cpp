@@ -36,9 +36,8 @@ string exitName;
 bool exitsPresent;
 bool wayClear;
 char* problem;
-char* problemID;
-char* probProgress;
-int itemActive;
+
+
 
 void Look();
 void moveRoom();
@@ -51,12 +50,12 @@ void collect();
 void dropItem();
 void interact();
 void seeItems();
+void seeObjects();
 void floorLevel();
 void examineInventoryItem();
 void examineItem();
-void earnReward();
-void checkProblems();
-void solvedProblems();
+void earnReward(char* problem);
+
 void seeRewards();
 
 
@@ -64,7 +63,7 @@ int main()
 {
 	std::string input = "";
 
-	rc = sqlite3_open("house9.db", &db);
+	rc = sqlite3_open("minihouse.db", &db);
 
 	if (rc)
 	{
@@ -96,30 +95,6 @@ int main()
 	cout << "You find yourself in a " << results[cellPosition] << ". " << endl;
 
 	currentRoom = results[cellPosition];
-
-
-	problemResolved << "SELECT SOLVED FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
-	string f = problemResolved.str();
-	char* sdx = &f[0];
-	const char* wait = sdx;
-	char** getit;
-	int row2, column2;
-
-	sqlite3_get_table(db, wait, &getit, &row2, &column2, &error);
-
-	int pnCell = row2;
-
-	probProgress = getit[pnCell];
-
-	if (probProgress = "0")
-	{
-		checkProblems();
-	}
-	else if (probProgress = "1")
-	{
-		solvedProblems();
-	}
-	
 
 
 	cout << "What do you do?" << endl;
@@ -155,6 +130,10 @@ int main()
 		{
 			destroyPath();
 		}
+		else if (input == "examine")
+		{
+			examineItem();
+		}
 		else if (input == "interact")
 		{
 			interact();
@@ -162,6 +141,10 @@ int main()
 		else if (input == "items")
 		{
 			seeItems();
+		}
+		else if (input == "objects")
+		{
+			seeObjects();
 		}
 		else if (input == "floor")
 		{
@@ -186,14 +169,14 @@ void collect()
 	std::stringstream CollectItem;
 	std::stringstream checkCarry;
 	char* itemCheck;
-	//std::stringstream ItemInventory;
+	std::stringstream ItemInventory;
 
 	char itemName[10];
 
 	cout << "Which item do you want to collect?" << endl;
 	cin >> itemName;
 
-	checkCarry << "SELECT COLLECTABLE FROM objects WHERE NAME = '" << itemName << "' AND COLLECTABLE = 0;";
+	checkCarry << "SELECT COLLECTABLE FROM objects WHERE NAME = '" << itemName << "';";
 	string s = checkCarry.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -210,23 +193,33 @@ void collect()
 	itemCheck = results[cellPosition];
 	
 	cout << itemCheck << endl;
+	
 
-
-	CollectItem << "UPDATE objects SET HIDDEN = 1 WHERE NAME = '" << itemName << "';";
-	string st = CollectItem.str();
-	char* get = &st[0];
-	const char* sqlInsert = get;
-	rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
-
-	if (rc)
+	if (itemCheck = "0")
 	{
-		cerr << "Cannot collect item because: " << sqlite3_errmsg(db) << endl;
-		sqlite3_free(error);
+		CollectItem << "UPDATE objects SET HIDDEN = 1 WHERE NAME = '" << itemName << "';";
+		string st = CollectItem.str();
+		char* get = &st[0];
+		const char* sqlInsert = get;
+		rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
+
+		if (rc)
+		{
+			cerr << "Cannot collect item because: " << sqlite3_errmsg(db) << endl;
+			sqlite3_free(error);
+		}
+		else
+		{
+			cout << "Item collected" << endl;
+		}
 	}
-	else
+	else if (itemCheck = "1")
 	{
-		cout << "Item collected" << endl;
+		cout << "You cannot collect this item." << endl;
+		
 	}
+
+
 	
 
 	return;
@@ -392,21 +385,38 @@ void checkExits()
 void useItem()
 {
 	char itemUse[10];
-	char objectUse[10];
+	char verb[10];
+	char* objectUse;
 	char* problemFix;
+	std::string consequences = "";
 	std::stringstream itemInteraction;
 	std::stringstream actionUndertake;
 	std::stringstream updateProblem;
+	std::stringstream alternateCheck;
+	std::stringstream stateChange;
 	
 	cout << "Which item do you wish to use?" << endl;
 	cin >> itemUse;
 
-	cout << "What do you want to use the item on?" << endl;
-	cin >> objectUse;
+	cout << "How do you want to use the item?" << endl;
+	cin >> verb;
 
+	actionUndertake << "SELECT NAME FROM objects INNER JOIN actions ON objects.ID = actions.OBJECT2_ID WHERE actions.OBJECT_1 = '" << itemUse << "' AND actions.VERB = '" << verb << "' AND objects.ROOM_LINK = " << IDRoom << ";";
+	string t = actionUndertake.str();
+	char* fds = &t[0];
+	const char* changes = fds;
+	char** solving;
+	int row1, col1;
 
+	sqlite3_get_table(db, changes, &solving, &row1, &col1, &error);
+
+	int posCell = row1;
 	
-	itemInteraction << "UPDATE objects SET HIDDEN = 2 WHERE NAME = '" << objectUse << "';";
+	objectUse = solving[posCell];
+
+	cout << "You use the " << itemUse << " to " << verb << " the " << objectUse << ".";
+
+	itemInteraction << "SELECT RESULT FROM actions WHERE OBJECT_1 = '" << itemUse << "' AND VERB = '" << verb << "';";
 	string s = itemInteraction.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -419,16 +429,39 @@ void useItem()
 
 	cout << results[cellPosition] << endl;
 
-	//problemFix = results[cellPosition];
+	updateProblem << "UPDATE objects SET HIDDEN = 2 WHERE NAME = '" << objectUse << "';";
+	string r = updateProblem.str();
+	char* gfs = &r[0];
+	const char* remark = gfs;
+	rc = sqlite3_exec(db, remark, NULL, NULL, &error);
 
-	/*
-	updateProblem << "UPDATE problems SET SOLVED = 1 WHERE AFTER_DESC = '" << problemFix << "';";
-	string w = updateProblem.str();
-	char* fgd = &w[0];
-	const char* search = fgd;
-	rc = sqlite3_exec(db, search, NULL, NULL, &error);
+	alternateCheck << "SELECT ALTERNATE_EXISTS FROM objects WHERE NAME = '" << objectUse << "';";
+	string e = alternateCheck.str();
+	char* dfs = &e[0];
+	const char* lookup = dfs;
+	char** findings;
+	int row2, col2;
 
-	earnReward();*/
+	sqlite3_get_table(db, lookup, &findings, &row2, &col2, &error);
+
+	int pCell = row2;
+
+	problemFix = findings[pCell];
+
+	if (problemFix = "0")
+	{
+		cout << "No further action necessary." << endl;
+	}
+	else if (problemFix = "1")
+	{
+		stateChange << "UPDATE objects SET HIDDEN = 0 WHERE ALTERNATE_STATE = '" << objectUse << "';";
+		string k = stateChange.str();
+		char* fnv = &k[0];
+		const char* change = fnv;
+		rc = sqlite3_exec(db, change, NULL, NULL, &error);
+	}
+
+	earnReward(objectUse);
 
 	return;
 }
@@ -436,18 +469,49 @@ void useItem()
 void interact()
 {
 	char objectUse[10];
+	char* problemFix;
+	std::stringstream alternateCheck;
 	std::stringstream objectInteraction;
 	std::stringstream objectState;
 
 	cout << "Which object do you wish to interact with?" << endl;
 	cin >> objectUse;
 
-	objectInteraction << "UPDATE objects SET HIDDEN = 1 WHERE OBJECT_NAME = '" << objectUse << "';";
+	objectInteraction << "UPDATE objects SET HIDDEN = 2 WHERE NAME = '" << objectUse << "';";
 	string s = objectInteraction.str();
 	char* str = &s[0];
 	const char* query = str;
 	rc = sqlite3_exec(db, query, NULL, NULL, &error);
 
+
+	alternateCheck << "SELECT ALTERNATE_EXISTS FROM objects WHERE NAME = '" << objectUse << "';";
+	string e = alternateCheck.str();
+	char* dfs = &e[0];
+	const char* lookup = dfs;
+	char** findings;
+	int row2, col2;
+
+	sqlite3_get_table(db, lookup, &findings, &row2, &col2, &error);
+
+	int pCell = row2;
+
+	problemFix = findings[pCell];
+
+	if (problemFix = "0")
+	{
+		cout << "No further action necessary." << endl;
+	}
+	else if (problemFix = "1")
+	{
+		objectState << "UPDATE objects SET HIDDEN = 0 WHERE ALTERNATE_STATE = '" << objectUse << "';";
+		string k = objectState.str();
+		char* fnv = &k[0];
+		const char* change = fnv;
+		rc = sqlite3_exec(db, change, NULL, NULL, &error);
+
+		cout << "Things have changed." << endl;
+
+	}
 
 
 	return;
@@ -478,28 +542,6 @@ void Look()
 
 		cout << results[cellPosition] << endl;
 		checkExits();
-
-		problemResolved << "SELECT SOLVED FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
-		string f = problemResolved.str();
-		char* sdx = &f[0];
-		const char* wait = sdx;
-		char** getit;
-		int row2, column2;
-
-		sqlite3_get_table(db, wait, &getit, &row2, &column2, &error);
-
-		int pnCell = row2;
-
-		probProgress = getit[pnCell];
-
-		if (probProgress = "0")
-		{
-			checkProblems();
-		}
-		else if (probProgress = "1")
-		{
-			solvedProblems();
-		}
 
 	}
 
@@ -702,28 +744,6 @@ void moveRoom()
 		int posCell = row1;
 
 		IDRoom = find[posCell];
-
-		problemResolved << "SELECT SOLVED FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
-		string f = problemResolved.str();
-		char* sdx = &f[0];
-		const char* wait = sdx;
-		char** getit;
-		int row2, column2;
-
-		sqlite3_get_table(db, wait, &getit, &row2, &column2, &error);
-
-		int pnCell = row2;
-
-		probProgress = getit[pnCell];
-
-		if (probProgress = "0")
-		{
-			checkProblems();
-		}
-		else if (probProgress = "1")
-		{
-			solvedProblems();
-		}	
 		
 		cout <<"What do you do next? " << endl;
 	}
@@ -739,8 +759,8 @@ void seeItems()
 
 	cout << "You look around for any items." << endl;
 
-	//If CARRIED = 2: Item not in inventory
-	itemList << "SELECT NAME FROM objects WHERE ROOM_LINK = " << IDRoom << " AND HIDDEN = 0;";
+	
+	itemList << "SELECT NAME FROM objects WHERE ROOM_LINK = " << IDRoom << " AND HIDDEN = 0 AND COLLECTABLE = 0;";
 	string s = itemList.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -767,7 +787,41 @@ void seeItems()
 	return;
 }
 
+void seeObjects()
+{
+	std::stringstream objectList;
+	std::string action = "";
 
+	cout << "You look around for any objects." << endl;
+
+
+	objectList << "SELECT NAME FROM objects WHERE ROOM_LINK = " << IDRoom << " AND HIDDEN = 0 AND COLLECTABLE = 1;";
+	string s = objectList.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+	if (rc == SQLITE_EMPTY)
+	{
+		cerr << "Cannot perform function due to: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "You can see: " << endl;
+		for (int rowCtr = 0; rowCtr <= rows; rowCtr++)
+		{
+			int cellPosition = rowCtr;
+
+			cout << results[cellPosition] << endl;
+		}
+	}
+
+	
+	return;
+}
 
 void floorLevel()
 {
@@ -795,13 +849,13 @@ void floorLevel()
 	return;
 }
 
-void earnReward()
+void earnReward(char* problem)
 {
 	char* rewardName;
 	std::stringstream findReward;
 	std::stringstream getReward;
 
-	findReward << "SELECT NAME FROM rewards WHERE PROBLEM_LINK = " << problemID << ";";
+	findReward << "SELECT DESCRIPTION FROM rewards WHERE PROBLEM_NAME = '" << problem << "';";
 	string s = findReward.str();
 	char* str = &s[0];
 	const char* query = str;
@@ -812,7 +866,7 @@ void earnReward()
 
 	int cellPosition = rows;
 
-	cout << "You have just earned a " << results[cellPosition] << "." << endl;
+	cout << "You have just earned " << results[cellPosition] << "." << endl;
 
 	rewardName = results[cellPosition];
 
@@ -823,86 +877,6 @@ void earnReward()
 	rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
 	
 	return;
-}
-
-void checkProblems()
-{
-	std::stringstream seeProblem;
-	std::stringstream probID;
-
-
-	seeProblem << "SELECT BEFORE_DESC FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
-	string g = seeProblem.str();
-	char* stf = &g[0];
-	const char* condrum = stf;
-	char** findings;
-	int row1, column1;
-
-	sqlite3_get_table(db, condrum, &findings, &row1, &column1, &error);
-
-	int pCell = row1;
-
-	cout << findings[pCell] << endl;
-
-	problem = findings[pCell];
-
-	probID << "SELECT ID FROM problems WHERE AFTER_DESC = '" << problem << "';";
-	string f = probID.str();
-	char* gsw = &f[0];
-	const char* change = gsw;
-	char** alter;
-	int row2, column2;
-
-	sqlite3_get_table(db, change, &alter, &row2, &column2, &error);
-
-	int cellP = row2;
-
-	problemID = alter[cellP];
-
-	
-
-
-	
-	return;
-}
-
-void solvedProblems()
-{
-	std::stringstream seeProblem;
-	std::stringstream probID;
-
-
-	seeProblem << "SELECT AFTER_DESC FROM problems INNER JOIN locations ON problems.ID = locations.PROBLEM_LINK WHERE locations.ID = " << IDRoom << ";";
-	string g = seeProblem.str();
-	char* stf = &g[0];
-	const char* condrum = stf;
-	char** findings;
-	int row1, column1;
-
-	sqlite3_get_table(db, condrum, &findings, &row1, &column1, &error);
-
-	int pCell = row1;
-
-	cout << findings[pCell] << endl;
-	
-	problem = findings[pCell];
-
-	probID << "SELECT ID FROM problems WHERE AFTER_DESC = '" << problem << "';";
-	string f = probID.str();
-	char* gsw = &f[0];
-	const char* change = gsw;
-	char** alter;
-	int row2, column2;
-
-	sqlite3_get_table(db, change, &alter, &row2, &column2, &error);
-
-	int cellP = row2;
-
-	problemID = alter[cellP];
-
-
-	return;
-
 }
 
 void seeRewards()
