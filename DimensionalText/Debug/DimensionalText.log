@@ -1,4 +1,4 @@
 ﻿  DimensionalText.cpp
-c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltextfinal\dimensionaltext\dimensionaltext\dimensionaltext.cpp(602): warning C4101: 'fromRoom': unreferenced local variable
+c:\users\nicholas h.m. jones\documents\visual studio 2015\projects\dimensionaltextfinal\dimensionaltext\dimensionaltext\dimensionaltext.cpp(633): warning C4101: 'fromRoom': unreferenced local variable
   DimensionalText.vcxproj -> C:\Users\Nicholas H.M. Jones\Documents\Visual Studio 2015\Projects\DimensionalTextFinal\DimensionalText\Debug\DimensionalText.exe
   DimensionalText.vcxproj -> C:\Users\Nicholas H.M. Jones\Documents\Visual Studio 2015\Projects\DimensionalTextFinal\DimensionalText\Debug\DimensionalText.pdb (Full PDB)

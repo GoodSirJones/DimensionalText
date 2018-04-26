@@ -54,6 +54,7 @@ void seeObjects();
 void floorLevel();
 void examineInventoryItem();
 void examineItem();
+void examineObject();
 void earnReward(char* problem);
 
 void seeRewards();
@@ -63,7 +64,7 @@ int main()
 {
 	std::string input = "";
 
-	rc = sqlite3_open("minihouse.db", &db);
+	rc = sqlite3_open("house11.db", &db);
 
 	if (rc)
 	{
@@ -133,6 +134,10 @@ int main()
 		else if (input == "examine")
 		{
 			examineItem();
+		}
+		else if (input == "see")
+		{
+			examineObject();
 		}
 		else if (input == "interact")
 		{
@@ -233,8 +238,34 @@ void examineItem()
 	cout << "Which item do you want to examine?" << endl;
 	cin >> itemName;
 
-	itemDescription << "SELECT DESCRIPTION FROM objects WHERE NAME = '" << itemName << "';";
+	itemDescription << "SELECT DESCRIPTION FROM objects WHERE NAME = '" << itemName << "' AND COLLECTABLE = 0;";
 	string s = itemDescription.str();
+	char* str = &s[0];
+	const char* query = str;
+	char** results;
+	int rows, columns;
+
+
+	sqlite3_get_table(db, query, &results, &rows, &columns, &error);
+
+	int cellPosition = rows;
+
+	cout << results[cellPosition] << endl;
+
+	return;
+}
+
+void examineObject()
+{
+
+	std::stringstream objectDescription;
+	char objectName[10];
+
+	cout << "Which object do you want to examine?" << endl;
+	cin >> objectName;
+
+	objectDescription << "SELECT DESCRIPTION FROM objects WHERE NAME = '" << objectName << "' AND COLLECTABLE = 1;";
+	string s = objectDescription.str();
 	char* str = &s[0];
 	const char* query = str;
 	char** results;
